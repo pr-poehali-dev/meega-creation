@@ -1,0 +1,36 @@
+{
+  "tests": [
+    {
+      "name": "Получить список чатов",
+      "method": "GET",
+      "path": "/?path=chats",
+      "headers": {
+        "X-User-Id": "2"
+      },
+      "expectedStatus": 200
+    },
+    {
+      "name": "Получить сообщения чата",
+      "method": "GET",
+      "path": "/?path=messages/1",
+      "headers": {
+        "X-User-Id": "2"
+      },
+      "expectedStatus": 200
+    },
+    {
+      "name": "Отправить сообщение",
+      "method": "POST",
+      "path": "/?path=send",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-User-Id": "2"
+      },
+      "body": {
+        "chat_id": 1,
+        "content": "Тестовое сообщение"
+      },
+      "expectedStatus": 200
+    }
+  ]
+}

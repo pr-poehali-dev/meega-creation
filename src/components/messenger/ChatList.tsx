@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,16 @@ interface ChatListProps {
 }
 
 export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, formatTime }: ChatListProps) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filterChats = (chatList: Chat[]) => {
+    if (!searchQuery.trim()) return chatList;
+    return chatList.filter(chat => 
+      chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      chat.last_message?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
   return (
     <div className="w-80 bg-card/30 backdrop-blur-md border-r border-border flex flex-col">
       <div className="p-4 border-b border-border">
@@ -37,6 +48,8 @@ export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, form
         <Input 
           placeholder="Поиск..." 
           className="bg-muted/50 border-border"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
@@ -48,7 +61,7 @@ export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, form
         </TabsList>
 
         <TabsContent value="all" className="flex-1 overflow-y-auto px-2">
-          {chats.map((chat) => (
+          {filterChats(chats).map((chat) => (
             <Card 
               key={chat.id}
               className={`p-4 mb-2 cursor-pointer transition-all hover:bg-primary/10 animate-fade-in ${
@@ -82,7 +95,7 @@ export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, form
         </TabsContent>
 
         <TabsContent value="groups" className="flex-1 overflow-y-auto px-2">
-          {chats.filter(c => c.type === 'group').map((chat) => (
+          {filterChats(chats.filter(c => c.type === 'group')).map((chat) => (
             <Card 
               key={chat.id} 
               className={`p-4 mb-2 cursor-pointer transition-all hover:bg-primary/10 ${
@@ -104,7 +117,7 @@ export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, form
         </TabsContent>
 
         <TabsContent value="channels" className="flex-1 overflow-y-auto px-2">
-          {chats.filter(c => c.type === 'channel').map((chat) => (
+          {filterChats(chats.filter(c => c.type === 'channel')).map((chat) => (
             <Card 
               key={chat.id} 
               className={`p-4 mb-2 cursor-pointer transition-all hover:bg-primary/10 ${

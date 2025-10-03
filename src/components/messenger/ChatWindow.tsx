@@ -24,6 +24,13 @@ interface Message {
   reactions?: string[];
 }
 
+interface Call {
+  chatId: number;
+  chatName: string;
+  type: 'voice' | 'video';
+  startTime: number;
+}
+
 interface ChatWindowProps {
   activeChatData: Chat | undefined;
   messages: Message[];
@@ -35,6 +42,9 @@ interface ChatWindowProps {
   loading: boolean;
   activeChat: number | null;
   currentUserId: number;
+  onStartCall: (type: 'voice' | 'video') => void;
+  activeCall: Call | null;
+  onEndCall: () => void;
 }
 
 export const ChatWindow = ({
@@ -47,10 +57,46 @@ export const ChatWindow = ({
   formatTime,
   loading,
   activeChat,
-  currentUserId
+  currentUserId,
+  onStartCall,
+  activeCall,
+  onEndCall
 }: ChatWindowProps) => {
+  const getCallDuration = () => {
+    if (!activeCall) return '00:00';
+    const seconds = Math.floor((Date.now() - activeCall.startTime) / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
   return (
-    <div className="flex-1 flex flex-col bg-background/30 backdrop-blur-sm">
+    <div className="flex-1 flex flex-col bg-background/30 backdrop-blur-sm relative">
+      {activeCall && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center">
+          <div className="text-center">
+            <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-5xl">
+              {activeChatData?.name[0] || 'M'}
+            </div>
+            <h2 className="text-2xl font-bold mb-2">{activeCall.chatName}</h2>
+            <p className="text-lg text-muted-foreground mb-8">{getCallDuration()}</p>
+            <div className="flex gap-4 justify-center">
+              <Button size="icon" variant="outline" className="w-16 h-16 rounded-full">
+                <Icon name={activeCall.type === 'video' ? 'VideoOff' : 'MicOff'} size={24} />
+              </Button>
+              <Button 
+                size="icon" 
+                className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600"
+                onClick={onEndCall}
+              >
+                <Icon name="PhoneOff" size={24} />
+              </Button>
+              <Button size="icon" variant="outline" className="w-16 h-16 rounded-full">
+                <Icon name="Volume2" size={24} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="p-4 bg-card/40 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar>
@@ -67,10 +113,22 @@ export const ChatWindow = ({
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon" className="hover:bg-primary/20">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="hover:bg-primary/20"
+            onClick={() => onStartCall('voice')}
+            disabled={!!activeCall}
+          >
             <Icon name="Phone" size={20} />
           </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-secondary/20">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="hover:bg-secondary/20"
+            onClick={() => onStartCall('video')}
+            disabled={!!activeCall}
+          >
             <Icon name="Video" size={20} />
           </Button>
           <Button variant="ghost" size="icon" className="hover:bg-muted/20">

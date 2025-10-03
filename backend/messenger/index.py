@@ -134,6 +134,28 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'body': json.dumps({'rooms': rooms}),
                     'isBase64Encoded': False
                 }
+            
+            elif path == 'users':
+                cur.execute('''
+                    SELECT id, username, display_name, avatar_color, status
+                    FROM users
+                    ORDER BY display_name
+                ''')
+                
+                users = [dict(row) for row in cur.fetchall()]
+                
+                cur.close()
+                conn.close()
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'users': users}),
+                    'isBase64Encoded': False
+                }
         
         elif method == 'POST':
             body_data = json.loads(event.get('body', '{}'))
@@ -212,6 +234,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             elif path == 'create-chat':
                 name = body_data.get('name')
                 chat_type = body_data.get('type', 'group')
+                member_ids = body_data.get('member_ids', [])
                 
                 cur.execute('''
                     INSERT INTO chats (name, type, created_by)
@@ -226,6 +249,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     VALUES (%s, %s, 'admin')
                 ''', (chat_id, user_id))
                 
+                for member_id in member_ids:
+                    if member_id != user_id:
+                        cur.execute('''
+                            INSERT INTO chat_members (chat_id, user_id, role)
+                            VALUES (%s, %s, 'member')
+                            ON CONFLICT (chat_id, user_id) DO NOTHING
+                        ''', (chat_id, member_id))
+                
                 conn.commit()
                 cur.close()
                 conn.close()
@@ -236,7 +267,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'Content-Type': 'application/json',
                         'Access-Control-Allow-Origin': '*'
                     },
-                    'body': json.dumps({'chat_id': chat_id}),
+                    'body': json.dumps({'chat': {'id': chat_id, 'name': name}}),
                     'isBase64Encoded': False
                 }
         

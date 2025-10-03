@@ -34,6 +34,21 @@ interface VoiceRoom {
   participants: number;
 }
 
+interface User {
+  id: number;
+  username: string;
+  display_name: string;
+  avatar_color: string;
+  status: 'online' | 'offline';
+}
+
+interface Call {
+  chatId: number;
+  chatName: string;
+  type: 'voice' | 'video';
+  startTime: number;
+}
+
 const Index = () => {
   const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState('');
@@ -42,11 +57,15 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [voiceRooms, setVoiceRooms] = useState<VoiceRoom[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [activeCall, setActiveCall] = useState<Call | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadChats();
     loadVoiceRooms();
+    loadUsers();
   }, []);
 
   useEffect(() => {
@@ -99,6 +118,77 @@ const Index = () => {
       setVoiceRooms(data.rooms || []);
     } catch (error) {
       console.error('Failed to load voice rooms:', error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const response = await fetch(`${API_URL}?path=users`, {
+        headers: { 'X-User-Id': String(CURRENT_USER_ID) }
+      });
+      const data = await response.json();
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  };
+
+  const startCall = (type: 'voice' | 'video') => {
+    if (!activeChatData) return;
+    setActiveCall({
+      chatId: activeChatData.id,
+      chatName: activeChatData.name,
+      type,
+      startTime: Date.now()
+    });
+    toast({
+      title: type === 'voice' ? 'Голосовой звонок' : 'Видеозвонок',
+      description: `Звонок в ${activeChatData.name} начат`
+    });
+  };
+
+  const endCall = () => {
+    setActiveCall(null);
+    toast({
+      title: 'Звонок завершён',
+      description: 'Связь прервана'
+    });
+  };
+
+  const createDirectChat = async (userId: number) => {
+    try {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      const response = await fetch(`${API_URL}?path=create-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': String(CURRENT_USER_ID)
+        },
+        body: JSON.stringify({
+          name: user.display_name,
+          type: 'chat',
+          member_ids: [userId]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        loadChats();
+        setActiveChat(data.chat.id);
+        setShowUserSearch(false);
+        toast({
+          title: 'Чат создан',
+          description: `Начните переписку с ${user.display_name}`
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось создать чат',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -201,7 +291,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460] text-foreground">
-      <div className="container mx-auto h-screen flex">
+      <div className="h-screen flex">
         <Sidebar 
           showCustomization={showCustomization}
           setShowCustomization={setShowCustomization}
@@ -213,6 +303,7 @@ const Index = () => {
           setActiveChat={setActiveChat}
           createNewChat={createNewChat}
           formatTime={formatTime}
+          onSearchUsers={() => setShowUserSearch(true)}
         />
         
         <ChatWindow
@@ -226,6 +317,9 @@ const Index = () => {
           loading={loading}
           activeChat={activeChat}
           currentUserId={CURRENT_USER_ID}
+          onStartCall={startCall}
+          activeCall={activeCall}
+          onEndCall={endCall}
         />
         
         <ChatInfo
@@ -233,6 +327,37 @@ const Index = () => {
           voiceRooms={voiceRooms}
           showCustomization={showCustomization}
         />
+
+        {showUserSearch && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowUserSearch(false)}>
+            <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Поиск пользователей</h2>
+                <button onClick={() => setShowUserSearch(false)} className="text-muted-foreground hover:text-foreground">
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-2">
+                {users.filter(u => u.id !== CURRENT_USER_ID).map(user => (
+                  <div
+                    key={user.id}
+                    onClick={() => createDirectChat(user.id)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-primary/10 cursor-pointer transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: user.avatar_color }}>
+                      {user.display_name[0]}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold">{user.display_name}</p>
+                      <p className="text-sm text-muted-foreground">@{user.username}</p>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${user.status === 'online' ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

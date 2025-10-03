@@ -23,9 +23,10 @@ interface ChatListProps {
   setActiveChat: (id: number) => void;
   createNewChat: () => void;
   formatTime: (timestamp: string | null) => string;
+  onSearchUsers: () => void;
 }
 
-export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, formatTime }: ChatListProps) => {
+export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, formatTime, onSearchUsers }: ChatListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filterChats = (chatList: Chat[]) => {
@@ -41,9 +42,14 @@ export const ChatList = ({ chats, activeChat, setActiveChat, createNewChat, form
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold">Чаты</h2>
-          <Button size="icon" variant="ghost" className="hover:bg-primary/20" onClick={createNewChat}>
-            <Icon name="Plus" size={20} />
-          </Button>
+          <div className="flex gap-2">
+            <Button size="icon" variant="ghost" className="hover:bg-secondary/20" onClick={onSearchUsers}>
+              <Icon name="UserPlus" size={20} />
+            </Button>
+            <Button size="icon" variant="ghost" className="hover:bg-primary/20" onClick={createNewChat}>
+              <Icon name="Plus" size={20} />
+            </Button>
+          </div>
         </div>
         <Input 
           placeholder="Поиск..." 
